@@ -27,7 +27,7 @@ const ChartFactory: React.FC<ChartFactoryProps> = ({ chartType, title = 'Nieuwe 
           color: '#334155'
         }
       },
-      colors: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'],
+      colors: ['#A7d194', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'],
       xAxis: {
         categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
         lineColor: '#e2e8f0',
@@ -50,7 +50,6 @@ const ChartFactory: React.FC<ChartFactoryProps> = ({ chartType, title = 'Nieuwe 
       }
     };
 
-    // Data voor elk chart type
     const mockData = [65, 59, 80, 81, 56, 72];
 
     switch (chartType) {
@@ -61,6 +60,7 @@ const ChartFactory: React.FC<ChartFactoryProps> = ({ chartType, title = 'Nieuwe 
             ...baseOptions.chart,
             type: 'line' as const
           },
+          colors: ['#A7d194'],
           series: [{
             type: 'line' as const,
             name: 'Trend',
@@ -79,6 +79,7 @@ const ChartFactory: React.FC<ChartFactoryProps> = ({ chartType, title = 'Nieuwe 
             ...baseOptions.chart,
             type: 'bar' as const
           },
+          colors: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'],
           plotOptions: {
             bar: {
               borderRadius: 4,
@@ -100,6 +101,7 @@ const ChartFactory: React.FC<ChartFactoryProps> = ({ chartType, title = 'Nieuwe 
             ...baseOptions.chart,
             type: 'pie' as const
           },
+          colors: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'],
           plotOptions: {
             pie: {
               borderWidth: 0,
@@ -134,8 +136,10 @@ const ChartFactory: React.FC<ChartFactoryProps> = ({ chartType, title = 'Nieuwe 
             ...baseOptions.chart,
             type: 'area' as const
           },
+          colors: ['#A7d194'],
           plotOptions: {
             area: {
+              fillColor: '#c9e3bd',
               fillOpacity: 0.3,
               marker: {
                 enabled: false,
@@ -163,6 +167,7 @@ const ChartFactory: React.FC<ChartFactoryProps> = ({ chartType, title = 'Nieuwe 
             ...baseOptions.chart,
             type: 'column' as const
           },
+          colors: ['#A7d194', '#000000'],
           plotOptions: {
             column: {
               borderRadius: 4,

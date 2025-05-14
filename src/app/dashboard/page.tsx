@@ -2,10 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
-import Highcharts from "highcharts";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import ResponsiveHighChart from "../_context/components/ResponsiveHighChart";
 import DashboardSidebar from "../_context/components/DashboardSidebar";
 import ChartFactory from "../_context/components/ChartFactory";
 import { ChartOption, ChartItem } from "../types/chart-types";
@@ -65,6 +63,8 @@ const Dashboard = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [customCharts, setCustomCharts] = useState<ChartItem[]>([]);
     const [nextChartId, setNextChartId] = useState(1);
+    const [originalLayouts, setOriginalLayouts] = useState<typeof defaultLayouts | null>(null);
+    const [originalCharts, setOriginalCharts] = useState<ChartItem[] | null>(null);
 
     const ResponsiveGridLayout = React.useMemo(() => WidthProvider(Responsive), []);
 
@@ -136,10 +136,10 @@ const Dashboard = () => {
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(layouts));
             localStorage.setItem(CHARTS_STORAGE_KEY, JSON.stringify(customCharts));
             setIsEditMode(false); 
-            alert("Dashboard layout opgeslagen!");
+            setOriginalLayouts(null);
+            setOriginalCharts(null);
         } catch (error) {
             console.error("Error saving layouts to localStorage:", error);
-            alert("Er is een fout opgetreden bij het opslaan van de layout.");
         }
     };
 
@@ -150,7 +150,27 @@ const Dashboard = () => {
     };
 
     const toggleEditMode = () => {
-        setIsEditMode(!isEditMode);
+        if (!isEditMode) {
+            setOriginalLayouts(JSON.parse(JSON.stringify(layouts)));
+            setOriginalCharts(JSON.parse(JSON.stringify(customCharts)));
+            setIsEditMode(true);
+        } else {
+            setIsEditMode(false);
+        }
+    };
+
+    const undoChanges = () => {
+        if (originalLayouts) {
+            setLayouts(originalLayouts);
+        }
+        
+        if (originalCharts) {
+            setCustomCharts(originalCharts);
+        }
+        
+        setIsEditMode(false);
+        setOriginalLayouts(null);
+        setOriginalCharts(null);
     };
 
     const resetToDefault = () => {
@@ -160,9 +180,10 @@ const Dashboard = () => {
         localStorage.removeItem(CHARTS_STORAGE_KEY);
         setIsEditMode(false);
         setNextChartId(1);
-        alert("Dashboard layout is hersteld naar de standaard instellingen.");
+        setOriginalLayouts(null);
+        setOriginalCharts(null);
     };
-
+    
     const findFreeGridPosition = (width: number, height: number) => {
         if (!layouts.lg || layouts.lg.length === 0) {
             return { x: 0, y: 0 };
@@ -217,6 +238,13 @@ const Dashboard = () => {
     };
 
     const handleAddChart = (chartType: ChartOption) => {
+        if (!originalLayouts) {
+            setOriginalLayouts(JSON.parse(JSON.stringify(layouts)));
+        }
+        if (!originalCharts) {
+            setOriginalCharts(JSON.parse(JSON.stringify(customCharts)));
+        }
+
         const newChartId = `custom-${nextChartId}`;
         setNextChartId(prevId => prevId + 1);
 
@@ -248,20 +276,19 @@ const Dashboard = () => {
 
         setLayouts(updatedLayouts);
         setCustomCharts(prev => [...prev, newChart]);
-
         setIsEditMode(true);
-
-        try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLayouts));
-            localStorage.setItem(CHARTS_STORAGE_KEY, JSON.stringify([...customCharts, newChart]));
-        } catch (error) {
-            console.error("Error saving layouts after adding chart:", error);
-        }
     };
 
     const handleRemoveChart = (chartId: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        
+        if (!originalLayouts) {
+            setOriginalLayouts(JSON.parse(JSON.stringify(layouts)));
+        }
+        if (!originalCharts) {
+            setOriginalCharts(JSON.parse(JSON.stringify(customCharts)));
+        }
         
         if (!chartId.startsWith('custom-')) return;
         
@@ -275,428 +302,21 @@ const Dashboard = () => {
         
         setLayouts(updatedLayouts);
         setCustomCharts(updatedCustomCharts);
-
-        try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLayouts));
-            localStorage.setItem(CHARTS_STORAGE_KEY, JSON.stringify(updatedCustomCharts));
-        } catch (error) {
-            console.error("Error saving layouts after chart removal:", error);
-        }
     };
-
-    // const lineChartOptions = {
-    //     chart: {
-    //         backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    //         borderRadius: 12,
-    //         style: {
-    //             fontFamily: 'var(--font-geist-sans), sans-serif'
-    //         }
-    //     },
-    //     title: { 
-    //         text: "Trends Overview",
-    //         style: {
-    //             fontWeight: '600',
-    //             fontSize: '16px',
-    //             color: '#334155'
-    //         }
-    //     },
-    //     colors: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'],
-    //     xAxis: {
-    //         lineColor: '#e2e8f0',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     yAxis: {
-    //         gridLineColor: '#f1f5f9',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     series: [{
-    //         type: "line" as const,
-    //         name: "Performance",
-    //         data: [1, 3, 2, 4, 5, 3, 6],
-    //         lineWidth: 3,
-    //         marker: {
-    //             radius: 4
-    //         }
-    //     }]
-    // };
-
-    // const pieChartOptions = {
-    //     chart: { 
-    //         type: "pie" as const,
-    //         backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    //         borderRadius: 12,
-    //         style: {
-    //             fontFamily: 'var(--font-geist-sans), sans-serif'
-    //         }
-    //     },
-    //     title: { 
-    //         text: "Completion Status",
-    //         style: {
-    //             fontWeight: '600',
-    //             fontSize: '16px',
-    //             color: '#334155'
-    //         }
-    //     },
-    //     colors: ['#3b82f6', '#e2e8f0', '#f59e0b'],
-    //     plotOptions: {
-    //         pie: {
-    //             borderWidth: 0,
-    //             borderRadius: 4,
-    //             innerSize: '50%',
-    //             dataLabels: {
-    //                 distance: 20,
-    //                 style: {
-    //                     fontWeight: '500',
-    //                     color: '#475569',
-    //                     textOutline: 'none'
-    //                 }
-    //             }
-    //         }
-    //     },
-    //     series: [{
-    //         type: "pie" as const,
-    //         name: "Completed",
-    //         data: [
-    //           { name: "Done", y: 60 },
-    //           { name: "Remaining", y: 30 },
-    //           { name: "Deals", y: 10 }
-    //         ]
-    //     }]
-    // };
-
-    // const revisitBarOptions = {
-    //     chart: { 
-    //         type: "column" as const,
-    //         backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    //         borderRadius: 12,
-    //         style: {
-    //             fontFamily: 'var(--font-geist-sans), sans-serif'
-    //         }
-    //     }, 
-    //     title: { 
-    //         text: "Customer Revisits",
-    //         style: {
-    //             fontWeight: '600',
-    //             fontSize: '16px',
-    //             color: '#334155'
-    //         }
-    //     },
-    //     colors: ['#3b82f6', '#94a3b8'],
-    //     xAxis: {
-    //         categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    //         lineColor: '#e2e8f0',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     yAxis: {
-    //         title: {
-    //             text: 'Revisits'
-    //         },
-    //         gridLineColor: '#f1f5f9',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     plotOptions: {
-    //         column: {
-    //             borderRadius: 4,
-    //             borderWidth: 0
-    //         }
-    //     },
-    //     series: [
-    //         {
-    //             type: "column" as const,
-    //             name: "Gewonnen",
-    //             data: [49, 71, 106, 129, 144, 176]
-    //         },
-    //         {
-    //             type: "column" as const,
-    //             name: "Open",
-    //             data: [83, 78, 98, 93, 106, 84]
-    //         }
-    //     ] 
-    // };
-
-    // const formCloseOptions = {
-    //     chart: { 
-    //         type: "area" as const,
-    //         backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    //         borderRadius: 12,
-    //         style: {
-    //             fontFamily: 'var(--font-geist-sans), sans-serif'
-    //         }
-    //     },
-    //     title: { 
-    //         text: "Gewonnen deals",
-    //         style: {
-    //             fontWeight: '600',
-    //             fontSize: '16px',
-    //             color: '#334155'
-    //         }
-    //     },
-    //     colors: ['#10b981'],
-    //     xAxis: {
-    //         categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    //         lineColor: '#e2e8f0',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     yAxis: {
-    //         title: {
-    //             text: 'Percentage'
-    //         },
-    //         gridLineColor: '#f1f5f9',
-    //         labels: {
-    //             format: '{value}%',
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     tooltip: {
-    //         pointFormat: '{series.name}: <b>{point.y}%</b>'
-    //     },
-    //     plotOptions: {
-    //         area: {
-    //             fillOpacity: 0.3,
-    //             marker: {
-    //                 enabled: false,
-    //                 symbol: 'circle',
-    //                 radius: 2,
-    //                 states: {
-    //                     hover: {
-    //                         enabled: true
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     },
-    //     series: [
-    //         {
-    //             type: "area" as const,
-    //             name: "Gewonnen deals", 
-    //             data: [63, 67, 72, 78, 82, 85]
-    //         }
-    //     ]
-    // };
-
-    // const regionOptions = {
-    //     chart: { 
-    //         type: "column" as const,
-    //         backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    //         borderRadius: 12,
-    //         style: {
-    //             fontFamily: 'var(--font-geist-sans), sans-serif'
-    //         }
-    //     },
-    //     title: { 
-    //         text: "Regional Performance",
-    //         style: {
-    //             fontWeight: '600',
-    //             fontSize: '16px',
-    //             color: '#334155'
-    //         }
-    //     },
-    //     colors: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'],
-    //     xAxis: {
-    //         categories: ['North', 'East', 'South', 'West', 'Central'],
-    //         lineColor: '#e2e8f0',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     yAxis: {
-    //         title: {
-    //             text: 'Sales (€)'
-    //         },
-    //         gridLineColor: '#f1f5f9',
-    //         labels: {
-    //             format: '€{value:,.0f}',
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     tooltip: {
-    //         pointFormat: '{series.name}: <b>€{point.y:,.0f}</b>'
-    //     },
-    //     plotOptions: {
-    //         column: {
-    //             borderRadius: 4,
-    //             borderWidth: 0
-    //         }
-    //     },
-    //     series: [
-    //         {
-    //             type: "column" as const,
-    //             name: "Sales",
-    //             data: [120000, 95000, 75000, 110000, 145000],
-    //             colorByPoint: true
-    //         }
-    //     ]
-    // };
-
-    // const activityOptions = {
-    //     chart: { 
-    //         type: "line" as const,
-    //         backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    //         borderRadius: 12,
-    //         style: {
-    //             fontFamily: 'var(--font-geist-sans), sans-serif'
-    //         }
-    //     },
-    //     title: { 
-    //         text: "Daily User Activity",
-    //         style: {
-    //             fontWeight: '600',
-    //             fontSize: '16px',
-    //             color: '#334155'
-    //         }
-    //     },
-    //     colors: ['#8b5cf6'],
-    //     xAxis: {
-    //         categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    //         lineColor: '#e2e8f0',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     yAxis: {
-    //         title: {
-    //             text: 'Active Users'
-    //         },
-    //         min: 0,
-    //         gridLineColor: '#f1f5f9',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     tooltip: {
-    //         pointFormat: '{series.name}: <b>{point.y} users</b>'
-    //     },
-    //     plotOptions: {
-    //         line: {
-    //             marker: {
-    //                 enabled: true,
-    //                 radius: 5,
-    //                 symbol: 'circle'
-    //             },
-    //             lineWidth: 3
-    //         }
-    //     },
-    //     series: [
-    //         {
-    //             type: "line" as const,
-    //             name: "Active Users",
-    //             data: [143, 176, 202, 148, 187, 236, 225]
-    //         }
-    //     ]
-    // };
-
-    // const stepCompletionOptions = {
-    //     chart: { 
-    //         type: "bar" as const,
-    //         backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    //         borderRadius: 12,
-    //         style: {
-    //             fontFamily: 'var(--font-geist-sans), sans-serif'
-    //         }
-    //     },
-    //     title: { 
-    //         text: "Workflow Progress",
-    //         style: {
-    //             fontWeight: '600',
-    //             fontSize: '16px',
-    //             color: '#334155'
-    //         }
-    //     },
-    //     colors: ['#3b82f6'],
-    //     xAxis: {
-    //         categories: ['Planning', 'Design', 'Development', 'Testing', 'Deployment'],
-    //         lineColor: '#e2e8f0',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     yAxis: {
-    //         min: 0,
-    //         max: 100,
-    //         title: {
-    //             text: 'Completion %'
-    //         },
-    //         gridLineColor: '#f1f5f9',
-    //         labels: {
-    //             style: {
-    //                 color: '#64748b'
-    //             }
-    //         }
-    //     },
-    //     tooltip: {
-    //         pointFormat: '{series.name}: <b>{point.y}%</b>'
-    //     },
-    //     plotOptions: {
-    //         bar: {
-    //             borderRadius: 4,
-    //             dataLabels: {
-    //                 enabled: true,
-    //                 format: '{y}%',
-    //                 style: {
-    //                     fontWeight: '500',
-    //                     color: '#475569',
-    //                     textOutline: 'none'
-    //                 }
-    //             }
-    //         }
-    //     },
-    //     legend: {
-    //         enabled: false
-    //     },
-    //     series: [
-    //         {
-    //             type: "bar" as const,
-    //             name: "Progress",
-    //             data: [90, 80, 85, 40, 30]
-    //         }
-    //     ]
-    // };
 
     return (
       <div className="flex h-screen overflow-hidden">
         <DashboardSidebar onAddChart={handleAddChart} />
         
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-3">
             <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
             <div className="flex space-x-3">
               {isEditMode ? (
                 <>
                   <button 
                     onClick={saveLayouts} 
-                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow hover:bg-emerald-700 transition-colors flex items-center space-x-1"
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center space-x-1"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -704,17 +324,17 @@ const Dashboard = () => {
                     <span>Opslaan</span>
                   </button>
                   <button 
-                    onClick={toggleEditMode} 
-                    className="px-4 py-2 bg-slate-600 text-white rounded-lg shadow hover:bg-slate-700 transition-colors flex items-center space-x-1"
+                    onClick={undoChanges} 
+                    className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center space-x-1"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1z" clipRule="evenodd" />
                     </svg>
                     <span>Annuleren</span>
                   </button>
                   <button 
                     onClick={resetToDefault} 
-                    className="px-4 py-2 bg-rose-600 text-white rounded-lg shadow hover:bg-rose-700 transition-colors flex items-center space-x-1"
+                    className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors flex items-center space-x-1"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
@@ -725,9 +345,9 @@ const Dashboard = () => {
               ) : (
                 <button 
                   onClick={toggleEditMode} 
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                  className="px-4 py-2 bg-[#A7d194] text-black rounded-lg hover:bg-[#90c579] transition-colors flex items-center space-x-1"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 " viewBox="0 0 20 20" fill="currentColor">
                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                   </svg>
                   <span>Bewerken</span>
@@ -748,7 +368,7 @@ const Dashboard = () => {
             margin={[16, 16]}
             draggableCancel=".react-grid-item-deletion-button"
           >
-            <div key="statcard1" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 transition-all hover:shadow-md">
+            <div key="statcard1" className="bg-white rounded-xl p-4 border border-slate-100 transition-all ">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-slate-500">Leads</div>
@@ -768,7 +388,7 @@ const Dashboard = () => {
               </div>
             </div>
             
-            <div key="statcard2" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 transition-all hover:shadow-md">
+            <div key="statcard2" className="bg-white rounded-xl  p-4 border border-slate-100 transition-all ">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-slate-500">Deals</div>
@@ -788,11 +408,11 @@ const Dashboard = () => {
               </div>
             </div>
             
-            <div key="statcard3" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 transition-all hover:shadow-md">
+            <div key="statcard3" className="bg-white rounded-xl p-4 border border-slate-100 transition-all">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-slate-500">Revenue</div>
-                  <div className="text-2xl font-bold text-slate-800 mt-1">€43,200</div>
+                  <div className="text-2xl font-bold text-slate-800 mt-1">€200,000</div>
                   <div className="text-xs text-emerald-600 font-medium mt-1 flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
@@ -808,7 +428,7 @@ const Dashboard = () => {
               </div>
             </div>
             
-            <div key="statcard4" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 transition-all hover:shadow-md">
+            <div key="statcard4" className="bg-white rounded-xl p-4 border border-slate-100 transition-all">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-slate-500">Conversion</div>
@@ -859,7 +479,7 @@ const Dashboard = () => {
             {customCharts.map(chart => (
               <div 
                 key={chart.i} 
-                className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 overflow-hidden transition-all hover:shadow-md relative"
+                className="bg-white rounded-xl p-4 border border-slate-100 overflow-hidden transition-all relative"
               >
                 {isEditMode && (
                   <button 
@@ -895,7 +515,6 @@ const Dashboard = () => {
             .react-grid-item.react-draggable-dragging {
               transition: none;
               z-index: 100;
-              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
             }
             
             .react-grid-item.react-grid-placeholder {

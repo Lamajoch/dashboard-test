@@ -13,29 +13,32 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ onAddChart }) => {
   const chartOptions: ChartOption[] = [
     { id: 'line', name: 'Lijndiagram', icon: 'chart-line' },
     { id: 'bar', name: 'Staafdiagram', icon: 'chart-bar' },
-    { id: 'pie', name: 'Taartdiagram', icon: 'chart-pie' },
+    { id: 'pie', name: 'Piechart', icon: 'chart-pie' },
     { id: 'area', name: 'Vlakdiagram', icon: 'chart-area' },
     { id: 'column', name: 'Kolomdiagram', icon: 'chart-column' },
   ];
 
   return (
-    <div className="h-full w-64 bg-white border-r border-slate-200 flex flex-col">
-      <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+    <div className="h-full w-80 bg-white border-r border-slate-200 flex flex-col">
+      <div className="p-4 border-b border-slate-200 bg- flex justify-between items-center">
         <h2 className="text-lg font-semibold text-slate-800">Grafieken</h2>
         <button 
           onClick={() => setIsPopupOpen(true)}
-          className="w-8 h-8 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-colors flex items-center justify-center"
+          className="w-9 h-9 bg-[#A7d194] text-black rounded-lg hover:bg-[#90c579]  transition-colors flex items-center justify-center"
           aria-label="Grafiek toevoegen"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
         </button>
       </div>
+      <div className="p-4">
+        <input type="text" placeholder="Zoek grafiek" className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A7d194] focus:ring-opacity-50 transition-all" />
+      </div>
 
       {isPopupOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-96 max-w-full">
+          <div className="bg-white rounded-xl p-6 w-96 max-w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-slate-800">Grafiek toevoegen</h3>
               <button 
@@ -51,14 +54,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ onAddChart }) => {
               {chartOptions.map((chart) => (
                 <button
                   key={chart.id}
-                  className="p-4 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all"
+                  className="p-4 border border-slate-200 rounded-lg hover:border-[#A7d194] hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring[#90c579] focus:ring-opacity-50 transition-all"
                   onClick={() => {
                     onAddChart(chart);
                     setIsPopupOpen(false);
                   }}
                 >
                   <div className="flex flex-col items-center">
-                    <ChartIcon type={chart.icon} className="h-8 w-8 text-blue-600 mb-2" />
+                    <ChartIcon type={chart.icon} className="h-8 w-8 text-[#A7d194] mb-2" />
                     <span className="text-sm text-slate-700">{chart.name}</span>
                   </div>
                 </button>
