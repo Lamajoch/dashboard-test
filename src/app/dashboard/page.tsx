@@ -1,19 +1,47 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import DashboardSidebar from "../_context/components/DashboardSidebar";
+import DashboardSidebar from "../_context/components/Sidebar";
 import ChartFactory from "../_context/components/ChartFactory";
 import { ChartOption, ChartItem } from "../types/chart-types";
+import productionLeadData from "../data/production-widget-service.lead-configurations.json";
+import widgetConfiguratorData from "../data/widgetvsconfigurator.json";
+import { 
+  applyConstraintsToLayout, 
+  getOptimalSizeForChart,
+  type BreakpointConstraints 
+} from "../utils/gridcontainer";
 
 const ResponsiveReactGridLayout = WidthProvider(Responsive);
   
 const LOCAL_STORAGE_KEY = "dashboard_layouts";
 const CHARTS_STORAGE_KEY = "dashboard_charts";
 
-const lg = [
+const getWeekData = (data: Array<{ _id: string; count: number }>, weekIndex: number) => 
+  data.slice(weekIndex * 7, (weekIndex * 7) + 7);
+
+const getMonthData = (data: Array<{ _id: string; count: number }>, monthOffset: number = 0) => {
+
+  const currentDate = new Date();
+  currentDate.setMonth(currentDate.getMonth() - monthOffset);
+  const targetYear = currentDate.getFullYear();
+  const targetMonth = currentDate.getMonth() + 1;
+
+  const targetMonthStr = `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
+  
+  return data.filter(item => item._id.startsWith(targetMonthStr));
+};
+
+const calculateTotal = (data: Array<{ _id: string; count: number }>) => 
+  data.reduce((sum: number, { count }) => sum + count, 0);
+
+const calculatePercentageChange = (current: number, previous: number) => 
+  previous === 0 ? 100 : Math.round(((current - previous) / previous) * 100);
+
+const baseLg = [
     { i: "statcard1", x: 0, y: 0, w: 3, h: 4 },
     { i: "statcard2", x: 3, y: 0, w: 3, h: 4 },
     { i: "statcard3", x: 6, y: 0, w: 3, h: 4 },
@@ -27,7 +55,7 @@ const lg = [
     { i: "stepCompletion", x: 7, y: 45, w: 5, h: 10 }
 ];
   
-const md = [
+const baseMd = [
     { i: "statcard1", x: 0, y: 0, w: 5, h: 4 },
     { i: "statcard2", x: 5, y: 0, w: 5, h: 4 },
     { i: "statcard3", x: 0, y: 4, w: 5, h: 4 },
@@ -41,7 +69,7 @@ const md = [
     { i: "stepCompletion", x: 5, y: 58, w: 5, h: 10 }
 ];
 
-const sm = [
+const baseSm = [
     { i: "statcard1", x: 0, y: 0, w: 1, h: 4 },
     { i: "statcard2", x: 0, y: 4, w: 1, h: 4 },
     { i: "statcard3", x: 0, y: 8, w: 1, h: 4 },
@@ -55,7 +83,11 @@ const sm = [
     { i: "stepCompletion", x: 0, y: 86, w: 1, h: 10 }
 ];
 
-const defaultLayouts = { lg, md, sm };
+const defaultLayouts = {
+    lg: applyConstraintsToLayout(baseLg, 'lg'),
+    md: applyConstraintsToLayout(baseMd, 'md'),
+    sm: applyConstraintsToLayout(baseSm, 'sm')
+};
 
 const Dashboard = () => {
 
@@ -65,8 +97,83 @@ const Dashboard = () => {
     const [nextChartId, setNextChartId] = useState(1);
     const [originalLayouts, setOriginalLayouts] = useState<typeof defaultLayouts | null>(null);
     const [originalCharts, setOriginalCharts] = useState<ChartItem[] | null>(null);
+    const [chartColors, setChartColors] = useState<Record<string, Record<string, string>>>({});
 
-    const ResponsiveGridLayout = React.useMemo(() => WidthProvider(Responsive), []);
+
+    const dashboardData = useMemo(() => {
+        const CURRENT_WEEK = 6;
+        const PREVIOUS_WEEK = 7;
+
+        const { widgetSeries, configuratorSeries } = widgetConfiguratorData[0];
+        
+        const monthlyLeads = {
+            current: getMonthData(productionLeadData, 0),
+            previous: getMonthData(productionLeadData, 1)
+        };
+
+        const weeks = {
+            current: {
+                widgets: getWeekData(widgetSeries, CURRENT_WEEK),
+                configurators: getWeekData(configuratorSeries, CURRENT_WEEK)
+            },
+            previous: {
+                widgets: getWeekData(widgetSeries, PREVIOUS_WEEK),
+                configurators: getWeekData(configuratorSeries, PREVIOUS_WEEK)
+            }
+        };
+
+        const totals = {
+            monthly: {
+                currentLeads: calculateTotal(monthlyLeads.current),
+                previousLeads: calculateTotal(monthlyLeads.previous)
+            },
+            weekly: {
+                current: {
+                    widgets: calculateTotal(weeks.current.widgets),
+                    configurators: calculateTotal(weeks.current.configurators)
+                },
+                previous: {
+                    widgets: calculateTotal(weeks.previous.widgets),
+                    configurators: calculateTotal(weeks.previous.configurators)
+                }
+            }
+        };
+
+        const avgDailyLeads = monthlyLeads.current.length > 0 
+            ? Math.round(totals.monthly.currentLeads / monthlyLeads.current.length) 
+            : 0;
+        
+        const percentChanges = {
+            monthlyLeads: calculatePercentageChange(totals.monthly.currentLeads, totals.monthly.previousLeads),
+            widgets: calculatePercentageChange(totals.weekly.current.widgets, totals.weekly.previous.widgets),
+            configurators: calculatePercentageChange(totals.weekly.current.configurators, totals.weekly.previous.configurators)
+        };
+
+        const widgetToConfigRatio = totals.weekly.current.configurators > 0 
+            ? Math.round((totals.weekly.current.widgets / totals.weekly.current.configurators) * 10) / 10
+            : 0;
+        const prevWidgetToConfigRatio = totals.weekly.previous.configurators > 0 
+            ? Math.round((totals.weekly.previous.widgets / totals.weekly.previous.configurators) * 10) / 10
+            : 0;
+        const ratioPercentChange = calculatePercentageChange(widgetToConfigRatio, prevWidgetToConfigRatio);
+
+        const currentMonth = new Date().toLocaleString('nl-NL', { month: 'long' });
+        const previousMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleString('nl-NL', { month: 'long' });
+        
+        return {
+            leadMonthlyTotal: totals.monthly.currentLeads,
+            avgDailyLeads,
+            widgetWeekTotal: totals.weekly.current.widgets,
+            configuratorWeekTotal: totals.weekly.current.configurators,
+            widgetToConfigRatio,
+            leadPercentChange: percentChanges.monthlyLeads,
+            widgetPercentChange: percentChanges.widgets,
+            configuratorPercentChange: percentChanges.configurators,
+            ratioPercentChange,
+            currentMonth,
+            previousMonth
+        };
+    }, []);
 
     useEffect(() => {
         try {
@@ -82,12 +189,10 @@ const Dashboard = () => {
                         loadedLayouts = parsedLayouts;
                     }
                 } catch (parseError) {
-                    console.error("Error parsing layouts from localStorage:", parseError);
+                    console.error("Error parsing layouts from localStorage:");
                 }
             }
             
-            setLayouts(loadedLayouts);
-
             const savedCharts = localStorage.getItem(CHARTS_STORAGE_KEY);
             let loadedCharts: ChartItem[] = [];
             
@@ -95,7 +200,6 @@ const Dashboard = () => {
                 try {
                     const parsedCharts = JSON.parse(savedCharts);
                     if (Array.isArray(parsedCharts)) {
-
                         loadedCharts = parsedCharts.filter(chart => 
                             chart && 
                             typeof chart === 'object' && 
@@ -105,10 +209,17 @@ const Dashboard = () => {
                         );
                     }
                 } catch (parseError) {
-                    console.error("Error parsing charts from localStorage:", parseError);
+                    console.error("Error parsing charts from localStorage:");
                 }
             }
             
+            const constrainedLayouts = {
+                lg: applyConstraintsToLayout(loadedLayouts.lg || [], 'lg', loadedCharts),
+                md: applyConstraintsToLayout(loadedLayouts.md || [], 'md', loadedCharts),
+                sm: applyConstraintsToLayout(loadedLayouts.sm || [], 'sm', loadedCharts)
+            };
+            
+            setLayouts(constrainedLayouts);
             setCustomCharts(loadedCharts);
 
             if (loadedCharts.length > 0) {
@@ -123,11 +234,13 @@ const Dashboard = () => {
                 const maxId = chartIds.length > 0 ? Math.max(...chartIds) : 0;
                 setNextChartId(maxId + 1);
             }
+
         } catch (error) {
-            console.error("Error loading dashboard data from localStorage:", error);
+            console.error("Error loading dashboard data from localStorage:");
             setLayouts(defaultLayouts);
             setCustomCharts([]);
             setNextChartId(1);
+            setChartColors({});
         }
     }, []);
     
@@ -139,13 +252,18 @@ const Dashboard = () => {
             setOriginalLayouts(null);
             setOriginalCharts(null);
         } catch (error) {
-            console.error("Error saving layouts to localStorage:", error);
+            console.error("Error saving layouts to localStorage:");
         }
     };
 
     const onLayoutChange = (_currentLayout: any, allLayouts: any) => {
         if (isEditMode) {
-            setLayouts(allLayouts);
+            const constrainedLayouts = {
+                lg: applyConstraintsToLayout(allLayouts.lg || [], 'lg', customCharts),
+                md: applyConstraintsToLayout(allLayouts.md || [], 'md', customCharts),
+                sm: applyConstraintsToLayout(allLayouts.sm || [], 'sm', customCharts)
+            };
+            setLayouts(constrainedLayouts);
         }
     };
 
@@ -174,8 +292,15 @@ const Dashboard = () => {
     };
 
     const resetToDefault = () => {
-        setLayouts(defaultLayouts);
+        const resetLayouts = {
+            lg: applyConstraintsToLayout(baseLg, 'lg'),
+            md: applyConstraintsToLayout(baseMd, 'md'),
+            sm: applyConstraintsToLayout(baseSm, 'sm')
+        };
+        
+        setLayouts(resetLayouts);
         setCustomCharts([]);
+        setChartColors({});
         localStorage.removeItem(LOCAL_STORAGE_KEY);
         localStorage.removeItem(CHARTS_STORAGE_KEY);
         setIsEditMode(false);
@@ -247,31 +372,31 @@ const Dashboard = () => {
 
         const newChartId = `custom-${nextChartId}`;
         setNextChartId(prevId => prevId + 1);
+        const lgSize = getOptimalSizeForChart(chartType.id, 'lg');
+        const mdSize = getOptimalSizeForChart(chartType.id, 'md');
+        const smSize = getOptimalSizeForChart(chartType.id, 'sm');
 
-        let width = 6;
-        let height = 10;
-        
-        if (chartType.id === 'pie') {
-            width = 5;
-        } else if (chartType.id === 'bar') {
-            width = 7;
-        }
-
-        const { x, y } = findFreeGridPosition(width, height);
+        const { x, y } = findFreeGridPosition(lgSize.w, lgSize.h);
         
         const newChart: ChartItem = {
             i: newChartId,
             chartType: chartType.id,
             x: x,
             y: y,
-            w: width,
-            h: height
+            w: lgSize.w,
+            h: lgSize.h
+        };
+
+        const newLayoutItems = {
+            lg: applyConstraintsToLayout([{ i: newChartId, x, y, w: lgSize.w, h: lgSize.h }], 'lg', [newChart])[0],
+            md: applyConstraintsToLayout([{ i: newChartId, x: 0, y, w: mdSize.w, h: mdSize.h }], 'md', [newChart])[0],
+            sm: applyConstraintsToLayout([{ i: newChartId, x: 0, y, w: smSize.w, h: smSize.h }], 'sm', [newChart])[0]
         };
 
         const updatedLayouts = {
-            lg: [...(layouts.lg || []), { i: newChartId, x, y, w: width, h: height }],
-            md: [...(layouts.md || []), { i: newChartId, x: 0, y, w: Math.min(width, 10), h: height }],
-            sm: [...(layouts.sm || []), { i: newChartId, x: 0, y, w: 1, h: height }]
+            lg: [...(layouts.lg || []), newLayoutItems.lg],
+            md: [...(layouts.md || []), newLayoutItems.md],
+            sm: [...(layouts.sm || []), newLayoutItems.sm]
         };
 
         setLayouts(updatedLayouts);
@@ -304,8 +429,23 @@ const Dashboard = () => {
         setCustomCharts(updatedCustomCharts);
     };
 
+    const TrendIndicator = ({ value, compareText = "vs vorige week" }: { value: number; compareText?: string }) => (
+        <div className={`text-xs ${value >= 0 ? 'text-emerald-600' : 'text-rose-600'} font-medium mt-1 flex items-center`}>
+            {value >= 0 ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+                </svg>
+            ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1V9a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586 3.707 5.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414l4.293 4.293V12a1 1 0 00-1-1h-2.5z" />
+                </svg>
+            )}
+            <p className="text-sm">{value >= 0 ? '+' : ''}{value}% {compareText}</p>
+        </div>
+    );
+
     return (
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-screen overflow-hidden relative">
         <DashboardSidebar onAddChart={handleAddChart} />
         
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
@@ -318,27 +458,18 @@ const Dashboard = () => {
                     onClick={saveLayouts} 
                     className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center space-x-1"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
                     <span>Opslaan</span>
                   </button>
                   <button 
                     onClick={undoChanges} 
                     className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center space-x-1"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1z" clipRule="evenodd" />
-                    </svg>
                     <span>Annuleren</span>
                   </button>
                   <button 
                     onClick={resetToDefault} 
                     className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors flex items-center space-x-1"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                    </svg>
                     <span>Reset</span>
                   </button>
                 </>
@@ -366,44 +497,24 @@ const Dashboard = () => {
             isDraggable={isEditMode}
             isResizable={isEditMode}
             margin={[16, 16]}
-            draggableCancel=".react-grid-item-deletion-button"
+            draggableCancel=".react-grid-item-deletion-button, .chart-settings-button"
           >
             <div key="statcard1" className="bg-white rounded-xl p-4 border border-slate-100 transition-all ">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-slate-500">Leads</div>
-                  <div className="text-2xl font-bold text-slate-800 mt-1">131</div>
-                  <div className="text-xs text-emerald-600 font-medium mt-1 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                    </svg>
-                    +12% vs vorige week
-                  </div>
-                </div>
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
+                  <div className="text-2xl font-bold text-slate-800 mt-1">{dashboardData.leadMonthlyTotal}</div>
+                  <TrendIndicator value={dashboardData.leadPercentChange} compareText={`vs ${dashboardData.previousMonth}`} />
                 </div>
               </div>
             </div>
             
-            <div key="statcard2" className="bg-white rounded-xl  p-4 border border-slate-100 transition-all ">
-              <div className="flex items-center justify-between">
+            <div key="statcard2" className="bg-white rounded-xl p-4 border border-slate-100 transition-all ">
+              <div className="flex items-center justify-between ">
                 <div>
-                  <div className="text-sm font-medium text-slate-500">Deals</div>
-                  <div className="text-2xl font-bold text-slate-800 mt-1">27</div>
-                  <div className="text-xs text-emerald-600 font-medium mt-1 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                    </svg>
-                    +5% vs vorige maand
-                  </div>
-                </div>
-                <div className="bg-emerald-100 p-3 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <div className="text-sm font-medium text-slate-500">Widget</div> 
+                  <div className="text-2xl font-bold text-slate-800 mt-1">{dashboardData.widgetWeekTotal}</div>
+                  <TrendIndicator value={dashboardData.widgetPercentChange} />
                 </div>
               </div>
             </div>
@@ -411,19 +522,9 @@ const Dashboard = () => {
             <div key="statcard3" className="bg-white rounded-xl p-4 border border-slate-100 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-medium text-slate-500">Revenue</div>
-                  <div className="text-2xl font-bold text-slate-800 mt-1">€200,000</div>
-                  <div className="text-xs text-emerald-600 font-medium mt-1 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                    </svg>
-                    +15% vs Q1
-                  </div>
-                </div>
-                <div className="bg-amber-100 p-3 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <div className="text-sm font-medium text-slate-500">Configurator</div>
+                  <div className="text-2xl font-bold text-slate-800 mt-1">{dashboardData.configuratorWeekTotal}</div>
+                  <TrendIndicator value={dashboardData.configuratorPercentChange} />
                 </div>
               </div>
             </div>
@@ -431,51 +532,14 @@ const Dashboard = () => {
             <div key="statcard4" className="bg-white rounded-xl p-4 border border-slate-100 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-medium text-slate-500">Conversion</div>
-                  <div className="text-2xl font-bold text-slate-800 mt-1">17%</div>
-                  <div className="text-xs text-rose-600 font-medium mt-1 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16 17a1 1 0 01-1-1v-2.586l-4.293 4.293a1 1 0 01-1.414 0L8 16.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 16.586 14.586 13H12a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 01-1 1z" clipRule="evenodd" />
-                    </svg>
-                    -2% vs target
+                  <div className="text-sm font-medium text-slate-500">Leads per Dag</div>
+                  <div className="text-2xl font-bold text-slate-800 mt-1">{dashboardData.avgDailyLeads}</div>
+                    <TrendIndicator value={dashboardData.configuratorPercentChange} />
+                  <div className="text-xs text-slate-500 font-medium mt-1 flex items-center">
                   </div>
-                </div>
-                <div className="bg-purple-100 p-3 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
                 </div>
               </div>
             </div>
-{/* 
-            <div key="eventTrends" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 overflow-hidden transition-all hover:shadow-md">
-              <ResponsiveHighChart options={lineChartOptions} />
-            </div>
-
-            <div key="completionPie" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 overflow-hidden transition-all hover:shadow-md">
-              <ResponsiveHighChart options={pieChartOptions} />
-            </div>
-
-            <div key="revisitBar" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 overflow-hidden transition-all hover:shadow-md">
-              <ResponsiveHighChart options={revisitBarOptions} />
-            </div>
-
-            <div key="formClose" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 overflow-hidden transition-all hover:shadow-md">
-              <ResponsiveHighChart options={formCloseOptions} />
-            </div>
-
-            <div key="map" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 overflow-hidden transition-all hover:shadow-md">
-              <ResponsiveHighChart options={regionOptions} />
-            </div>
-
-            <div key="activity" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 overflow-hidden transition-all hover:shadow-md">
-              <ResponsiveHighChart options={activityOptions} />
-            </div>      
-
-            <div key="stepCompletion" className="bg-white rounded-xl shadow-sm p-4 border border-slate-100 overflow-hidden transition-all hover:shadow-md">
-              <ResponsiveHighChart options={stepCompletionOptions} />
-            </div>
-             */}
             {customCharts.map(chart => (
               <div 
                 key={chart.i} 
@@ -494,56 +558,20 @@ const Dashboard = () => {
                 )}
                 <ChartFactory 
                   chartType={chart.chartType} 
-                  title={`Nieuwe ${chart.chartType} grafiek`} 
+                  title={`Reuzenpanda ${chart.chartType} grafiek`} 
+                  colors={chartColors[chart.i] || {}}
                 />
               </div>
             ))}
           </ResponsiveReactGridLayout>
-
           <style jsx>{`
-            .react-grid-placeholder {
-              background: rgba(59, 130, 246, 0.1) !important;
-              border: 2px dashed #3b82f6;
-              border-radius: 0.75rem;
-            }
-
             .react-grid-item {
               transition: all 200ms ease;
               transition-property: left, top;
-            }
-            
-            .react-grid-item.react-draggable-dragging {
-              transition: none;
-              z-index: 100;
-            }
-            
-            .react-grid-item.react-grid-placeholder {
-              background: rgba(59, 130, 246, 0.1) !important;
-              border: 2px dashed #3b82f6;
-              opacity: 0.7;
-              border-radius: 0.75rem;
-            }
-            
-            .react-resizable-handle {
-              visibility: ${isEditMode ? 'visible' : 'hidden'};
-              opacity: ${isEditMode ? '1' : '0'};
-              transition: opacity 0.2s ease-in-out;
-              right: 5px !important;
-              bottom: 5px !important;
-              width: 12px !important;
-              height: 12px !important;
-              background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>');
-              background-position: bottom right;
-              padding: 0 3px 3px 0;
-              background-repeat: no-repeat;
-              background-origin: content-box;
-              box-sizing: border-box;
-              cursor: se-resize;
             }
           `}</style>
         </div>
       </div>
     );
-};
-
+}
 export default Dashboard;
