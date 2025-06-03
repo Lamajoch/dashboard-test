@@ -8,10 +8,9 @@ import { Card } from '../timeout';
 
 interface PieRevenueChartProps {
   data: LeadData[];
-  colors?: Record<string, string>;
 }
 
-const PieRevenueChart: React.FC<PieRevenueChartProps> = ({ data, colors = {} }) => {
+const PieRevenueChart: React.FC<PieRevenueChartProps> = ({ data }) => {
   const processData = (rawData: LeadData[]) => {
 
     const sellerRevenue = {
@@ -22,11 +21,11 @@ const PieRevenueChart: React.FC<PieRevenueChartProps> = ({ data, colors = {} }) 
 
     rawData.forEach(lead => {
       const date = new Date(lead._id);
-      const month = date.getMonth();
+      const day = date.getDate();
 
-      if (month % 3 === 0) {
+      if (day % 3 === 0) {
         sellerRevenue['Jur'] += lead.count * 17; 
-      } else if (month % 3 === 1) {
+      } else if (day % 3 === 1) {
         sellerRevenue['Siebe'] += lead.count * 12;
       } else {
         sellerRevenue['Tygo'] += lead.count * 15; 
@@ -41,7 +40,7 @@ const PieRevenueChart: React.FC<PieRevenueChartProps> = ({ data, colors = {} }) 
 
   const generateOptions = (): EChartsOption => {
     const pieData = processData(data);
-    const defaultColors = ['#3b82f6', '#ef4444', '#10b981'];
+    const defaultColors = ['#ffe56f', '#93ceff', '#a7d58f'];
 
     return {
       backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -71,7 +70,7 @@ const PieRevenueChart: React.FC<PieRevenueChartProps> = ({ data, colors = {} }) 
         }
       },
       legend: {
-        top: '5%',
+        top: '7%',
         left: 'center',
         textStyle: {
           color: '#64748b'
@@ -85,7 +84,7 @@ const PieRevenueChart: React.FC<PieRevenueChartProps> = ({ data, colors = {} }) 
         data: pieData.map((item, index) => ({
           ...item,
           itemStyle: {
-            color: colors[`color${index + 1}`] || defaultColors[index]
+            color: defaultColors[index]
           }
         })),
         avoidLabelOverlap: false,

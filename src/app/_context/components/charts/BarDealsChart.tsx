@@ -25,22 +25,22 @@ const BarDealsChart: React.FC<BarDealsChartProps> = ({ data, colors = {} }) => {
 
     rawData.forEach(lead => {
       const date = new Date(lead._id);
-      const month = date.getMonth();
+      const day = date.getDate();
       const totalDeals = lead.count;
       
       const wonDeals = Math.round(totalDeals * 0.3);
       const lostDeals = Math.round(totalDeals * 0.2);
       const openDeals = totalDeals - wonDeals - lostDeals;
 
-      if (month % 3 === 0) {
+      if (day % 3 === 0) {
         sellerDeals['Jur'].won += wonDeals;
         sellerDeals['Jur'].lost += lostDeals;
         sellerDeals['Jur'].open += openDeals;
-      } else if (month % 3 === 1) {
+      } else if (day % 3 === 1) {
         sellerDeals['Siebe'].won += wonDeals;
         sellerDeals['Siebe'].lost += lostDeals;
         sellerDeals['Siebe'].open += openDeals;
-      } else if (month % 3 === 2) {
+      } else if (day % 3 === 2) {
         sellerDeals['Tygo'].won += wonDeals;
         sellerDeals['Tygo'].lost += lostDeals;
         sellerDeals['Tygo'].open += openDeals;
@@ -84,7 +84,7 @@ const BarDealsChart: React.FC<BarDealsChartProps> = ({ data, colors = {} }) => {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: 80,
+        top: 100,
         containLabel: true
       },
       xAxis: {
@@ -121,7 +121,7 @@ const BarDealsChart: React.FC<BarDealsChartProps> = ({ data, colors = {} }) => {
           type: 'bar',
           stack: 'total',
           itemStyle: { 
-            color: colors.won || '#A0D995'
+            color: colors.won || '#A7D58F'
           },
           emphasis: { focus: 'series' },
           data: [
@@ -135,7 +135,7 @@ const BarDealsChart: React.FC<BarDealsChartProps> = ({ data, colors = {} }) => {
           type: 'bar',
           stack: 'total',
           itemStyle: { 
-            color: colors.lost || '#F8A29C'
+            color: colors.lost || '#ffb1ac'
           },
           emphasis: { focus: 'series' },
           data: [
@@ -151,7 +151,7 @@ const BarDealsChart: React.FC<BarDealsChartProps> = ({ data, colors = {} }) => {
           label: {
             show: true,
             position: 'right',
-            color: '#64748b'
+            color: 'black'
           },
           itemStyle: { 
             color: colors.open || '#9CD2F9'

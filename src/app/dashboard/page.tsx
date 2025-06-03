@@ -11,8 +11,7 @@ import productionLeadData from "../data/production-widget-service.lead-configura
 import widgetConfiguratorData from "../data/widgetvsconfigurator.json";
 import { 
   applyConstraintsToLayout, 
-  getOptimalSizeForChart,
-  type BreakpointConstraints 
+  getOptimalSizeForChart
 } from "../utils/gridcontainer";
 
 const ResponsiveReactGridLayout = WidthProvider(Responsive);
@@ -45,42 +44,21 @@ const baseLg = [
     { i: "statcard1", x: 0, y: 0, w: 3, h: 4 },
     { i: "statcard2", x: 3, y: 0, w: 3, h: 4 },
     { i: "statcard3", x: 6, y: 0, w: 3, h: 4 },
-    { i: "statcard4", x: 9, y: 0, w: 3, h: 4 },
-    { i: "eventTrends", x: 0, y: 4, w: 7, h: 10 },
-    { i: "completionPie", x: 7, y: 4, w: 5, h: 10 },
-    { i: "revisitBar", x: 0, y: 15, w: 6, h: 10 },
-    { i: "formClose", x: 6, y: 15, w: 6, h: 10 },
-    { i: "map", x: 0, y: 25, w: 12, h: 20 },
-    { i: "activity", x: 0, y: 45, w: 7, h: 10 },
-    { i: "stepCompletion", x: 7, y: 45, w: 5, h: 10 }
+    { i: "statcard4", x: 9, y: 0, w: 3, h: 4 }
 ];
   
 const baseMd = [
     { i: "statcard1", x: 0, y: 0, w: 5, h: 4 },
     { i: "statcard2", x: 5, y: 0, w: 5, h: 4 },
     { i: "statcard3", x: 0, y: 4, w: 5, h: 4 },
-    { i: "statcard4", x: 5, y: 4, w: 5, h: 4 },
-    { i: "eventTrends", x: 0, y: 8, w: 10, h: 10 },
-    { i: "completionPie", x: 0, y: 18, w: 10, h: 10 },
-    { i: "revisitBar", x: 0, y: 28, w: 5, h: 10 },
-    { i: "formClose", x: 5, y: 28, w: 5, h: 10 },   
-    { i: "map", x: 0, y: 38, w: 10, h: 20 },
-    { i: "activity", x: 0, y: 58, w: 5, h: 10 },
-    { i: "stepCompletion", x: 5, y: 58, w: 5, h: 10 }
+    { i: "statcard4", x: 5, y: 4, w: 5, h: 4 }
 ];
 
 const baseSm = [
     { i: "statcard1", x: 0, y: 0, w: 1, h: 4 },
     { i: "statcard2", x: 0, y: 4, w: 1, h: 4 },
     { i: "statcard3", x: 0, y: 8, w: 1, h: 4 },
-    { i: "statcard4", x: 0, y: 12, w: 1, h: 4 },
-    { i: "eventTrends", x: 0, y: 16, w: 1, h: 10 },
-    { i: "completionPie", x: 0, y: 26, w: 1, h: 10 },
-    { i: "revisitBar", x: 0, y: 36, w: 1, h: 10 },
-    { i: "formClose", x: 0, y: 46, w: 1, h: 10 },
-    { i: "map", x: 0, y: 56, w: 1, h: 20 },
-    { i: "activity", x: 0, y: 76, w: 1, h: 10 },
-    { i: "stepCompletion", x: 0, y: 86, w: 1, h: 10 }
+    { i: "statcard4", x: 0, y: 12, w: 1, h: 4 }
 ];
 
 const defaultLayouts = {
@@ -97,8 +75,6 @@ const Dashboard = () => {
     const [nextChartId, setNextChartId] = useState(1);
     const [originalLayouts, setOriginalLayouts] = useState<typeof defaultLayouts | null>(null);
     const [originalCharts, setOriginalCharts] = useState<ChartItem[] | null>(null);
-    const [chartColors, setChartColors] = useState<Record<string, Record<string, string>>>({});
-
 
     const dashboardData = useMemo(() => {
         const CURRENT_WEEK = 6;
@@ -149,14 +125,6 @@ const Dashboard = () => {
             configurators: calculatePercentageChange(totals.weekly.current.configurators, totals.weekly.previous.configurators)
         };
 
-        const widgetToConfigRatio = totals.weekly.current.configurators > 0 
-            ? Math.round((totals.weekly.current.widgets / totals.weekly.current.configurators) * 10) / 10
-            : 0;
-        const prevWidgetToConfigRatio = totals.weekly.previous.configurators > 0 
-            ? Math.round((totals.weekly.previous.widgets / totals.weekly.previous.configurators) * 10) / 10
-            : 0;
-        const ratioPercentChange = calculatePercentageChange(widgetToConfigRatio, prevWidgetToConfigRatio);
-
         const currentMonth = new Date().toLocaleString('nl-NL', { month: 'long' });
         const previousMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleString('nl-NL', { month: 'long' });
         
@@ -165,11 +133,9 @@ const Dashboard = () => {
             avgDailyLeads,
             widgetWeekTotal: totals.weekly.current.widgets,
             configuratorWeekTotal: totals.weekly.current.configurators,
-            widgetToConfigRatio,
             leadPercentChange: percentChanges.monthlyLeads,
             widgetPercentChange: percentChanges.widgets,
             configuratorPercentChange: percentChanges.configurators,
-            ratioPercentChange,
             currentMonth,
             previousMonth
         };
@@ -189,7 +155,7 @@ const Dashboard = () => {
                         loadedLayouts = parsedLayouts;
                     }
                 } catch (parseError) {
-                    console.error("Error parsing layouts from localStorage:");
+                    console.error("Error layouts");
                 }
             }
             
@@ -209,7 +175,7 @@ const Dashboard = () => {
                         );
                     }
                 } catch (parseError) {
-                    console.error("Error parsing charts from localStorage:");
+                    console.error("Error charts");
                 }
             }
             
@@ -236,11 +202,12 @@ const Dashboard = () => {
             }
 
         } catch (error) {
-            console.error("Error loading dashboard data from localStorage:");
+            console.error("Error loading dashboard data");
             setLayouts(defaultLayouts);
             setCustomCharts([]);
             setNextChartId(1);
-            setChartColors({});
+            setOriginalLayouts(null);
+            setOriginalCharts(null);
         }
     }, []);
     
@@ -252,7 +219,7 @@ const Dashboard = () => {
             setOriginalLayouts(null);
             setOriginalCharts(null);
         } catch (error) {
-            console.error("Error saving layouts to localStorage:");
+            console.error("Error saving layouts");
         }
     };
 
@@ -300,7 +267,6 @@ const Dashboard = () => {
         
         setLayouts(resetLayouts);
         setCustomCharts([]);
-        setChartColors({});
         localStorage.removeItem(LOCAL_STORAGE_KEY);
         localStorage.removeItem(CHARTS_STORAGE_KEY);
         setIsEditMode(false);
@@ -349,7 +315,6 @@ const Dashboard = () => {
                         }
                     }
                 }
-                
                 if (isFree) {
                     return { x, y };
                 }
@@ -449,8 +414,7 @@ const Dashboard = () => {
         <DashboardSidebar onAddChart={handleAddChart} />
         
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
-          <div className="flex justify-between items-center mb-3">
-            <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+          <div className="flex justify-end items-center mb-3">
             <div className="flex space-x-3">
               {isEditMode ? (
                 <>
@@ -488,7 +452,7 @@ const Dashboard = () => {
           </div>
           
           <ResponsiveReactGridLayout
-            className="layout"
+            className={`layout ${isEditMode ? 'edit-mode' : ''}`}
             layouts={layouts}
             breakpoints={{ lg: 1200, md: 996, sm: 768 }}
             cols={{ lg: 12, md: 10, sm: 1 }}
@@ -534,12 +498,10 @@ const Dashboard = () => {
                 <div>
                   <div className="text-sm font-medium text-slate-500">Leads per Dag</div>
                   <div className="text-2xl font-bold text-slate-800 mt-1">{dashboardData.avgDailyLeads}</div>
-                    <TrendIndicator value={dashboardData.configuratorPercentChange} />
-                  <div className="text-xs text-slate-500 font-medium mt-1 flex items-center">
-                  </div>
                 </div>
               </div>
             </div>
+            
             {customCharts.map(chart => (
               <div 
                 key={chart.i} 
@@ -547,7 +509,7 @@ const Dashboard = () => {
               >
                 {isEditMode && (
                   <button 
-                    onClick={(e) => handleRemoveChart(chart.i, e)}
+                    onClick={(e) => handleRemoveChart(chart.i, e)} 
                     className="absolute top-2 right-2 z-50 w-7 h-7 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center hover:bg-rose-200 transition-colors react-grid-item-deletion-button"
                     aria-label="Verwijder grafiek"
                   >
@@ -558,8 +520,6 @@ const Dashboard = () => {
                 )}
                 <ChartFactory 
                   chartType={chart.chartType} 
-                  title={`Reuzenpanda ${chart.chartType} grafiek`} 
-                  colors={chartColors[chart.i] || {}}
                 />
               </div>
             ))}
@@ -568,6 +528,13 @@ const Dashboard = () => {
             .react-grid-item {
               transition: all 200ms ease;
               transition-property: left, top;
+            }
+        
+            .edit-mode .react-grid-item {
+              user-select: none;
+              -webkit-user-select: none;
+              -moz-user-select: none;
+              -ms-user-select: none;
             }
           `}</style>
         </div>

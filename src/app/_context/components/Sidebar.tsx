@@ -7,8 +7,6 @@ interface DashboardSidebarProps {
   onAddChart: (chartType: ChartOption) => void;
 }
 
-const SIDEBAR_WIDTH_EXPANDED = 320;
-const SIDEBAR_WIDTH_COLLAPSED = 64; 
 const MOBILE_BREAKPOINT = 768;
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ onAddChart }) => {
@@ -96,7 +94,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ onAddChart }) => {
           <h2 className={`text-lg font-semibold text-slate-800 transition-opacity duration-300 ${
             isSidebarOpen ? 'opacity-100' : 'opacity-0'
           } ${!isMobile && !isSidebarOpen ? 'sr-only' : ''}`}>
-            Grafieken
+            <img className=" h-10 10 mt-1"  src="/logo.png"/>
           </h2>
           <div className={`flex transition-all duration-300 ${
             isSidebarOpen ? 'space-x-2' : 'flex-col space-y-2'

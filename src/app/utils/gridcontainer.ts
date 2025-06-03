@@ -1,5 +1,3 @@
-
-
 export interface GridConstraints {
   minW: number;
   minH: number;
@@ -16,51 +14,51 @@ export interface BreakpointConstraints {
 export const GRID_CONSTRAINTS: Record<string, BreakpointConstraints> = {
 
   statcard: {
-    lg: { minW: 1, minH: 3, maxW: 4, maxH: 6 },
-    md: { minW: 1, minH: 3, maxW: 6, maxH: 6 },
-    sm: { minW: 1, minH: 3, maxW: 1, maxH: 6 }
+    lg: { minW: 1, minH:4 , maxW: 4, maxH: 6 },
+    md: { minW: 2, minH: 4, maxW: 6, maxH: 6 },
+    sm: { minW: 2, minH: 4, maxW: 1, maxH: 6 }
   },
 
   lineChart: {
-    lg: { minW: 3, minH: 8, maxW: 12, maxH: 20 },
-    md: { minW: 3, minH: 8, maxW: 10, maxH: 20 },
-    sm: { minW: 1, minH: 8, maxW: 1, maxH: 20 }
+    lg: { minW: 3, minH: 8, maxW: 12, maxH: 15 },
+    md: { minW: 3, minH: 8, maxW: 10, maxH: 15 },
+    sm: { minW: 1, minH: 8, maxW: 1, maxH: 15 }
   },
 
   stackedLineChart: {
-    lg: { minW: 5, minH: 10, maxW: 12, maxH: 20 },
-    md: { minW: 5, minH: 10, maxW: 10, maxH: 20 },
-    sm: { minW: 1, minH: 10, maxW: 1, maxH: 20 }
+    lg: { minW: 5, minH: 10, maxW: 12, maxH: 15 },
+    md: { minW: 5, minH: 10, maxW: 10, maxH: 15 },
+    sm: { minW: 1, minH: 10, maxW: 1, maxH: 15 }
   },
 
   barChart: {
-    lg: { minW: 3, minH: 8, maxW: 12, maxH: 18 },
-    md: { minW: 3, minH: 8, maxW: 10, maxH: 18 },
-    sm: { minW: 1, minH: 8, maxW: 1, maxH: 18 }
+    lg: { minW: 3, minH: 8, maxW: 12, maxH: 15 },
+    md: { minW: 3, minH: 8, maxW: 10, maxH: 15 },
+    sm: { minW: 1, minH: 8, maxW: 1, maxH: 15 }
   },
 
   pieChart: {
-    lg: { minW: 2, minH: 7, maxW: 8, maxH: 16 },
-    md: { minW: 2, minH: 7, maxW: 8, maxH: 16 },
-    sm: { minW: 1, minH: 7, maxW: 1, maxH: 16 }
+    lg: { minW: 2, minH: 7, maxW: 8, maxH: 15 },
+    md: { minW: 2, minH: 7, maxW: 8, maxH: 15 },
+    sm: { minW: 1, minH: 7, maxW: 1, maxH: 15 }
   },
 
   map: {
-    lg: { minW: 6, minH: 12, maxW: 12, maxH: 25 },
-    md: { minW: 8, minH: 12, maxW: 10, maxH: 25 },
-    sm: { minW: 1, minH: 12, maxW: 1, maxH: 25 }
+    lg: { minW: 6, minH: 12, maxW: 12, maxH: 15 },
+    md: { minW: 8, minH: 12, maxW: 10, maxH: 15 },
+    sm: { minW: 1, minH: 12, maxW: 1, maxH: 15 }
   },
 
   activity: {
-    lg: { minW: 4, minH: 8, maxW: 10, maxH: 16 },
-    md: { minW: 5, minH: 8, maxW: 10, maxH: 16 },
-    sm: { minW: 1, minH: 8, maxW: 1, maxH: 16 }
+    lg: { minW: 4, minH: 8, maxW: 10, maxH: 15 },
+    md: { minW: 5, minH: 8, maxW: 10, maxH: 15 },
+    sm: { minW: 1, minH: 8, maxW: 1, maxH: 15 }
   },
 
   default: {
-    lg: { minW: 3, minH: 8, maxW: 12, maxH: 20 },
-    md: { minW: 4, minH: 8, maxW: 10, maxH: 20 },
-    sm: { minW: 1, minH: 8, maxW: 1, maxH: 20 }
+    lg: { minW: 3, minH: 8, maxW: 12, maxH: 15 },
+    md: { minW: 4, minH: 8, maxW: 10, maxH: 15 },
+    sm: { minW: 1, minH: 8, maxW: 1, maxH: 15 }
   }
 };
 

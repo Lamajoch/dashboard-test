@@ -86,13 +86,28 @@ const StackedLineChart: React.FC<StackedLineChartProps> = ({ data, colors = {} }
           color: '#334155'
         },
         formatter: (params: any) => {
-          const configuratorValue = params[0].value;
-          const widgetValue = params[1].value;
+          if (!Array.isArray(params) || params.length === 0) return '';
+          
+          const configuratorParam = params.find((p: any) => p.seriesName === 'Configurator 2.0');
+          const widgetParam = params.find((p: any) => p.seriesName === 'Widget 1.0');
+          
+          const configuratorValue = configuratorParam?.value || 0;
+          const widgetValue = widgetParam?.value || 0;
           const total = configuratorValue + widgetValue;
-          return `${params[0].axisValue}<br/>
-                  ${params[0].marker}Configurator 2.0: ${configuratorValue} aanvragen<br/>
-                  ${params[1].marker}Widget 1.0: ${widgetValue} aanvragen<br/>
-                  Totaal: ${total} aanvragen`;
+          
+          let tooltipContent = `${params[0].axisValue}<br/>`;
+          
+          if (configuratorParam) {
+            tooltipContent += `${configuratorParam.marker}Configurator 2.0: ${configuratorValue} aanvragen<br/>`;
+          }
+          
+          if (widgetParam) {
+            tooltipContent += `${widgetParam.marker}Widget 1.0: ${widgetValue} aanvragen<br/>`;
+          }
+          
+          tooltipContent += `Totaal: ${total} aanvragen`;
+          
+          return tooltipContent;
         }
       },
       legend: {
@@ -103,7 +118,7 @@ const StackedLineChart: React.FC<StackedLineChartProps> = ({ data, colors = {} }
         }
       },
       grid: {
-        top: 60,
+        top:80,
         right: 20,
         bottom: 40,
         left: 60,
