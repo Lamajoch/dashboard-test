@@ -14,7 +14,7 @@ export interface BreakpointConstraints {
 export const GRID_CONSTRAINTS: Record<string, BreakpointConstraints> = {
 
   statcard: {
-    lg: { minW: 1, minH:4 , maxW: 4, maxH: 6 },
+    lg: { minW: 1, minH: 4, maxW: 4, maxH: 6 },
     md: { minW: 2, minH: 4, maxW: 6, maxH: 6 },
     sm: { minW: 2, minH: 4, maxW: 1, maxH: 6 }
   },
@@ -43,18 +43,6 @@ export const GRID_CONSTRAINTS: Record<string, BreakpointConstraints> = {
     sm: { minW: 1, minH: 7, maxW: 1, maxH: 15 }
   },
 
-  map: {
-    lg: { minW: 6, minH: 12, maxW: 12, maxH: 15 },
-    md: { minW: 8, minH: 12, maxW: 10, maxH: 15 },
-    sm: { minW: 1, minH: 12, maxW: 1, maxH: 15 }
-  },
-
-  activity: {
-    lg: { minW: 4, minH: 8, maxW: 10, maxH: 15 },
-    md: { minW: 5, minH: 8, maxW: 10, maxH: 15 },
-    sm: { minW: 1, minH: 8, maxW: 1, maxH: 15 }
-  },
-
   default: {
     lg: { minW: 3, minH: 8, maxW: 12, maxH: 15 },
     md: { minW: 4, minH: 8, maxW: 10, maxH: 15 },
@@ -67,12 +55,6 @@ export const ITEM_TYPE_MAPPING: Record<string, string> = {
   'statcard2': 'statcard', 
   'statcard3': 'statcard',
   'statcard4': 'statcard',
-
-  'eventTrends': 'stackedLineChart',
-  'completionPie': 'pieChart',
-  'revisitBar': 'barChart',
-  'formClose': 'barChart',
-  'stepCompletion': 'barChart',
 
   'map': 'map',
   'activity': 'activity'

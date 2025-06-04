@@ -9,10 +9,7 @@ import ChartFactory from "../_context/components/ChartFactory";
 import { ChartOption, ChartItem } from "../types/chart-types";
 import productionLeadData from "../data/production-widget-service.lead-configurations.json";
 import widgetConfiguratorData from "../data/widgetvsconfigurator.json";
-import { 
-  applyConstraintsToLayout, 
-  getOptimalSizeForChart
-} from "../utils/gridcontainer";
+import { applyConstraintsToLayout, getOptimalSizeForChart} from "../utils/gridcontainer";
 
 const ResponsiveReactGridLayout = WidthProvider(Responsive);
   
@@ -141,117 +138,93 @@ const Dashboard = () => {
         };
     }, []);
 
-    useEffect(() => {
+    const parseStorageData = <T,>(key: string, defaultValue: T, validator?: (data: any) => boolean): T => {
         try {
-            const savedLayouts = localStorage.getItem(LOCAL_STORAGE_KEY);
-            let loadedLayouts = defaultLayouts;
+            const stored = localStorage.getItem(key);
+            if (!stored) return defaultValue;
             
-            if (savedLayouts) {
-                try {
-                    const parsedLayouts = JSON.parse(savedLayouts);
-                    if (parsedLayouts && 
-                        typeof parsedLayouts === 'object' && 
-                        Array.isArray(parsedLayouts.lg)) {
-                        loadedLayouts = parsedLayouts;
-                    }
-                } catch (parseError) {
-                    console.error("Error layouts");
-                }
-            }
+            const parsed = JSON.parse(stored);
+            if (validator && !validator(parsed)) return defaultValue;
             
-            const savedCharts = localStorage.getItem(CHARTS_STORAGE_KEY);
-            let loadedCharts: ChartItem[] = [];
-            
-            if (savedCharts) {
-                try {
-                    const parsedCharts = JSON.parse(savedCharts);
-                    if (Array.isArray(parsedCharts)) {
-                        loadedCharts = parsedCharts.filter(chart => 
-                            chart && 
-                            typeof chart === 'object' && 
-                            chart.i && 
-                            typeof chart.i === 'string' &&
-                            chart.chartType
-                        );
-                    }
-                } catch (parseError) {
-                    console.error("Error charts");
-                }
-            }
-            
-            const constrainedLayouts = {
-                lg: applyConstraintsToLayout(loadedLayouts.lg || [], 'lg', loadedCharts),
-                md: applyConstraintsToLayout(loadedLayouts.md || [], 'md', loadedCharts),
-                sm: applyConstraintsToLayout(loadedLayouts.sm || [], 'sm', loadedCharts)
-            };
-            
-            setLayouts(constrainedLayouts);
-            setCustomCharts(loadedCharts);
-
-            if (loadedCharts.length > 0) {
-                const chartIds = loadedCharts
-                    .map(chart => chart.i)
-                    .filter(id => id.startsWith('custom-'))
-                    .map(id => {
-                        const idNumber = parseInt(id.replace('custom-', ''), 10);
-                        return isNaN(idNumber) ? 0 : idNumber;
-                    });
-                    
-                const maxId = chartIds.length > 0 ? Math.max(...chartIds) : 0;
-                setNextChartId(maxId + 1);
-            }
-
-        } catch (error) {
-            console.error("Error loading dashboard data");
-            setLayouts(defaultLayouts);
-            setCustomCharts([]);
-            setNextChartId(1);
-            setOriginalLayouts(null);
-            setOriginalCharts(null);
+            return parsed;
+        } catch {
+            return defaultValue;
         }
-    }, []);
-    
-    const saveLayouts = () => {
+    };
+
+    const validateLayouts = (data: any): boolean => 
+        data && typeof data === 'object' && Array.isArray(data.lg);
+
+    const validateCharts = (data: any): boolean => 
+        Array.isArray(data) && data.every(chart => 
+            chart && typeof chart === 'object' && 
+            typeof chart.i === 'string' && 
+            chart.chartType
+        );
+
+    const applyConstraintsToAllBreakpoints = (layouts: any, charts: ChartItem[]) => ({
+        lg: applyConstraintsToLayout(layouts.lg || [], 'lg', charts),
+        md: applyConstraintsToLayout(layouts.md || [], 'md', charts),
+        sm: applyConstraintsToLayout(layouts.sm || [], 'sm', charts)
+    });
+
+    const calculateNextChartId = (charts: ChartItem[]): number => {
+        const chartIds = charts
+            .map(chart => parseInt(chart.i.replace('custom-', ''), 10))
+            .filter(id => !isNaN(id));
+        return chartIds.length > 0 ? Math.max(...chartIds) + 1 : 1;
+    };
+
+    const saveToStorage = () => {
         try {
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(layouts));
             localStorage.setItem(CHARTS_STORAGE_KEY, JSON.stringify(customCharts));
-            setIsEditMode(false); 
-            setOriginalLayouts(null);
-            setOriginalCharts(null);
         } catch (error) {
-            console.error("Error saving layouts");
+            console.error("Error saving to storage:", error);
         }
+    };
+
+    const clearStorage = () => {
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        localStorage.removeItem(CHARTS_STORAGE_KEY);
+    };
+
+    useEffect(() => {
+        const loadedLayouts = parseStorageData(LOCAL_STORAGE_KEY, defaultLayouts, validateLayouts);
+        const loadedCharts = parseStorageData(CHARTS_STORAGE_KEY, [], validateCharts);
+
+        const constrainedLayouts = applyConstraintsToAllBreakpoints(loadedLayouts, loadedCharts);
+        
+        setLayouts(constrainedLayouts);
+        setCustomCharts(loadedCharts);
+        setNextChartId(calculateNextChartId(loadedCharts));
+    }, []);
+
+    const saveLayouts = () => {
+        saveToStorage();
+        setIsEditMode(false);
+        setOriginalLayouts(null);
+        setOriginalCharts(null);
     };
 
     const onLayoutChange = (_currentLayout: any, allLayouts: any) => {
         if (isEditMode) {
-            const constrainedLayouts = {
-                lg: applyConstraintsToLayout(allLayouts.lg || [], 'lg', customCharts),
-                md: applyConstraintsToLayout(allLayouts.md || [], 'md', customCharts),
-                sm: applyConstraintsToLayout(allLayouts.sm || [], 'sm', customCharts)
-            };
+            const constrainedLayouts = applyConstraintsToAllBreakpoints(allLayouts, customCharts);
             setLayouts(constrainedLayouts);
         }
     };
 
     const toggleEditMode = () => {
         if (!isEditMode) {
-            setOriginalLayouts(JSON.parse(JSON.stringify(layouts)));
-            setOriginalCharts(JSON.parse(JSON.stringify(customCharts)));
-            setIsEditMode(true);
-        } else {
-            setIsEditMode(false);
+            setOriginalLayouts(structuredClone(layouts));
+            setOriginalCharts(structuredClone(customCharts));
         }
+        setIsEditMode(!isEditMode);
     };
 
     const undoChanges = () => {
-        if (originalLayouts) {
-            setLayouts(originalLayouts);
-        }
-        
-        if (originalCharts) {
-            setCustomCharts(originalCharts);
-        }
+        if (originalLayouts) setLayouts(originalLayouts);
+        if (originalCharts) setCustomCharts(originalCharts);
         
         setIsEditMode(false);
         setOriginalLayouts(null);
@@ -259,103 +232,85 @@ const Dashboard = () => {
     };
 
     const resetToDefault = () => {
-        const resetLayouts = {
-            lg: applyConstraintsToLayout(baseLg, 'lg'),
-            md: applyConstraintsToLayout(baseMd, 'md'),
-            sm: applyConstraintsToLayout(baseSm, 'sm')
-        };
+        const resetLayouts = applyConstraintsToAllBreakpoints({
+            lg: baseLg,
+            md: baseMd,
+            sm: baseSm
+        }, []);
         
         setLayouts(resetLayouts);
         setCustomCharts([]);
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-        localStorage.removeItem(CHARTS_STORAGE_KEY);
-        setIsEditMode(false);
         setNextChartId(1);
+        setIsEditMode(false);
         setOriginalLayouts(null);
         setOriginalCharts(null);
+        clearStorage();
     };
-    
+
     const findFreeGridPosition = (width: number, height: number) => {
-        if (!layouts.lg || layouts.lg.length === 0) {
-            return { x: 0, y: 0 };
-        }
-
         const maxCols = 12;
-
-        const occupiedPositions: boolean[][] = [];
-
-        const maxY = Math.max(...layouts.lg.map(item => item.y + item.h)) + height;
-        for (let y = 0; y < maxY + height; y++) {
-            occupiedPositions[y] = [];
-            for (let x = 0; x < maxCols; x++) {
-                occupiedPositions[y][x] = false;
-            }
-        }
+        const currentItems = layouts.lg || [];
         
-        layouts.lg.forEach(item => {
+        if (currentItems.length === 0) return { x: 0, y: 0 };
+
+        const maxY = Math.max(...currentItems.map(item => item.y + item.h)) + height;
+        const grid = Array(maxY).fill(null).map(() => Array(maxCols).fill(false));
+        
+        currentItems.forEach(item => {
             for (let y = item.y; y < item.y + item.h; y++) {
                 for (let x = item.x; x < item.x + item.w; x++) {
-                    if (y < occupiedPositions.length && x < maxCols) {
-                        occupiedPositions[y][x] = true;
+                    if (y < grid.length && x < maxCols) {
+                        grid[y][x] = true;
                     }
                 }
             }
         });
         
-        for (let y = 0; y < occupiedPositions.length; y++) {
+        for (let y = 0; y < grid.length; y++) {
             for (let x = 0; x <= maxCols - width; x++) {
-                let isFree = true;
-
-                for (let checkY = y; checkY < y + height && isFree; checkY++) {
-                    for (let checkX = x; checkX < x + width && isFree; checkX++) {
-                        if (checkY >= occupiedPositions.length || 
-                            checkX >= maxCols || 
-                            occupiedPositions[checkY][checkX]) {
-                            isFree = false;
+                let canPlace = true;
+                
+                for (let checkY = y; checkY < y + height && canPlace; checkY++) {
+                    for (let checkX = x; checkX < x + width && canPlace; checkX++) {
+                        if (checkY >= grid.length || grid[checkY][checkX]) {
+                            canPlace = false;
                         }
                     }
                 }
-                if (isFree) {
-                    return { x, y };
-                }
+                
+                if (canPlace) return { x, y };
             }
         }
 
-        return { 
-            x: 0, 
-            y: Math.max(...layouts.lg.map(item => item.y + item.h)) + 1 
-        };
+        return { x: 0, y: Math.max(...currentItems.map(item => item.y + item.h)) + 1 };
     };
 
     const handleAddChart = (chartType: ChartOption) => {
-        if (!originalLayouts) {
-            setOriginalLayouts(JSON.parse(JSON.stringify(layouts)));
-        }
-        if (!originalCharts) {
-            setOriginalCharts(JSON.parse(JSON.stringify(customCharts)));
-        }
+        if (!originalLayouts) setOriginalLayouts(structuredClone(layouts));
+        if (!originalCharts) setOriginalCharts(structuredClone(customCharts));
 
         const newChartId = `custom-${nextChartId}`;
-        setNextChartId(prevId => prevId + 1);
-        const lgSize = getOptimalSizeForChart(chartType.id, 'lg');
-        const mdSize = getOptimalSizeForChart(chartType.id, 'md');
-        const smSize = getOptimalSizeForChart(chartType.id, 'sm');
+        const sizes = {
+            lg: getOptimalSizeForChart(chartType.id, 'lg'),
+            md: getOptimalSizeForChart(chartType.id, 'md'),
+            sm: getOptimalSizeForChart(chartType.id, 'sm')
+        };
 
-        const { x, y } = findFreeGridPosition(lgSize.w, lgSize.h);
+        const { x, y } = findFreeGridPosition(sizes.lg.w, sizes.lg.h);
         
         const newChart: ChartItem = {
             i: newChartId,
             chartType: chartType.id,
-            x: x,
-            y: y,
-            w: lgSize.w,
-            h: lgSize.h
+            x,
+            y,
+            w: sizes.lg.w,
+            h: sizes.lg.h
         };
 
         const newLayoutItems = {
-            lg: applyConstraintsToLayout([{ i: newChartId, x, y, w: lgSize.w, h: lgSize.h }], 'lg', [newChart])[0],
-            md: applyConstraintsToLayout([{ i: newChartId, x: 0, y, w: mdSize.w, h: mdSize.h }], 'md', [newChart])[0],
-            sm: applyConstraintsToLayout([{ i: newChartId, x: 0, y, w: smSize.w, h: smSize.h }], 'sm', [newChart])[0]
+            lg: { i: newChartId, x, y, w: sizes.lg.w, h: sizes.lg.h },
+            md: { i: newChartId, x: 0, y, w: sizes.md.w, h: sizes.md.h },
+            sm: { i: newChartId, x: 0, y, w: sizes.sm.w, h: sizes.sm.h }
         };
 
         const updatedLayouts = {
@@ -366,6 +321,7 @@ const Dashboard = () => {
 
         setLayouts(updatedLayouts);
         setCustomCharts(prev => [...prev, newChart]);
+        setNextChartId(prev => prev + 1);
         setIsEditMode(true);
     };
 
@@ -373,14 +329,10 @@ const Dashboard = () => {
         e.preventDefault();
         e.stopPropagation();
         
-        if (!originalLayouts) {
-            setOriginalLayouts(JSON.parse(JSON.stringify(layouts)));
-        }
-        if (!originalCharts) {
-            setOriginalCharts(JSON.parse(JSON.stringify(customCharts)));
-        }
-        
         if (!chartId.startsWith('custom-')) return;
+        
+        if (!originalLayouts) setOriginalLayouts(structuredClone(layouts));
+        if (!originalCharts) setOriginalCharts(structuredClone(customCharts));
         
         const updatedLayouts = {
             lg: (layouts.lg || []).filter(item => item.i !== chartId),
@@ -388,14 +340,12 @@ const Dashboard = () => {
             sm: (layouts.sm || []).filter(item => item.i !== chartId)
         };
         
-        const updatedCustomCharts = customCharts.filter(chart => chart.i !== chartId);
-        
         setLayouts(updatedLayouts);
-        setCustomCharts(updatedCustomCharts);
+        setCustomCharts(prev => prev.filter(chart => chart.i !== chartId));
     };
 
     const TrendIndicator = ({ value, compareText = "vs vorige week" }: { value: number; compareText?: string }) => (
-        <div className={`text-xs ${value >= 0 ? 'text-emerald-600' : 'text-rose-600'} font-medium mt-1 flex items-center`}>
+        <div className={`text-xs ${value >= 0 ? 'text-green-600' : 'text-red-600'} font-medium mt-1 flex items-center`}>
             {value >= 0 ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
@@ -412,7 +362,6 @@ const Dashboard = () => {
     return (
       <div className="flex h-screen overflow-hidden relative">
         <DashboardSidebar onAddChart={handleAddChart} />
-        
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
           <div className="flex justify-end items-center mb-3">
             <div className="flex space-x-3">
@@ -541,4 +490,5 @@ const Dashboard = () => {
       </div>
     );
 }
+
 export default Dashboard;
